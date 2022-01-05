@@ -231,7 +231,8 @@ class BrokerConnection(object):
         'sasl_plain_password': None,
         'sasl_kerberos_service_name': 'kafka',
         'sasl_kerberos_domain_name': None,
-        'sasl_oauth_token_provider': None
+        'sasl_oauth_token_provider': None,
+        'sasl_aws_msk_iam_session': BotoSession()
     }
     SECURITY_PROTOCOLS = ('PLAINTEXT', 'SSL', 'SASL_PLAINTEXT', 'SASL_SSL')
     SASL_MECHANISMS = ('PLAIN', 'GSSAPI', 'OAUTHBEARER', "SCRAM-SHA-256", "SCRAM-SHA-512", 'AWS_MSK_IAM')
@@ -572,7 +573,7 @@ class BrokerConnection(object):
         elif self.config['sasl_mechanism'].startswith("SCRAM-SHA-"):
             return self._try_authenticate_scram(future)
         elif self.config['sasl_mechanism'] == 'AWS_MSK_IAM':
-            return self._try_authenticate_aws_msk_iam(future)
+            return self._try_authenticate_aws_msk_iam(future, self.config["sasl_aws_msk_iam_session"])
         else:
             return future.failure(
                 Errors.UnsupportedSaslMechanismError(
@@ -673,8 +674,7 @@ class BrokerConnection(object):
         log.info('%s: Authenticated as %s via PLAIN', self, self.config['sasl_plain_username'])
         return future.success(True)
 
-    def _try_authenticate_aws_msk_iam(self, future):
-        session = BotoSession()
+    def _try_authenticate_aws_msk_iam(self, future, session):
         credentials = session.get_credentials().get_frozen_credentials()
         client = AwsMskIamClient(
             host=self.host,
