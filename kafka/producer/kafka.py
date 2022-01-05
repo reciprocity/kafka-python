@@ -335,6 +335,7 @@ class KafkaProducer(object):
         'sasl_kerberos_domain_name': None,
         'sasl_oauth_token_provider': None,
         'kafka_client': KafkaClient,
+        'sasl_aws_msk_iam_session': None,
     }
 
     _COMPRESSORS = {
