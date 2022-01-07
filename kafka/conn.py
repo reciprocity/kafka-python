@@ -680,7 +680,7 @@ class BrokerConnection(object):
             host=self.host,
             access_key=credentials.access_key,
             secret_key=credentials.secret_key,
-            region=session.get_config_variable('region'),
+            region=session.region_name,
             token=credentials.token,
         )
 
