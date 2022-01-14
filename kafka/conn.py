@@ -573,7 +573,7 @@ class BrokerConnection(object):
         elif self.config['sasl_mechanism'].startswith("SCRAM-SHA-"):
             return self._try_authenticate_scram(future)
         elif self.config['sasl_mechanism'] == 'AWS_MSK_IAM':
-            return self._try_authenticate_aws_msk_iam(future, self.config["sasl_aws_msk_iam_role_arn"])
+            return self._try_authenticate_aws_msk_iam(future)
         else:
             return future.failure(
                 Errors.UnsupportedSaslMechanismError(
@@ -674,22 +674,8 @@ class BrokerConnection(object):
         log.info('%s: Authenticated as %s via PLAIN', self, self.config['sasl_plain_username'])
         return future.success(True)
 
-    def _try_authenticate_aws_msk_iam(self, future, role_arn=None):
-        if role_arn:
-            client = BotoSession().client('sts')
-            assume_role = client.assume_role(
-                RoleArn=role_arn,
-                RoleSessionName="kafka-python"
-            )
-            credentials = assume_role['Credentials']
-            session = BotoSession(
-                aws_access_key_id=credentials['AccessKeyId'],
-                aws_secret_access_key=credentials['SecretAccessKey'],
-                aws_session_token=credentials['SessionToken'],
-            )
-        else:
-            session = BotoSession()
-
+    def _try_authenticate_aws_msk_iam(self, future):
+        session = self._get_aws_session()
         credentials = session.get_credentials().get_frozen_credentials()
         client = AwsMskIamClient(
             host=self.host,
@@ -883,6 +869,23 @@ class BrokerConnection(object):
 
         log.info('%s: Authenticated via OAuth', self)
         return future.success(True)
+
+    def _get_aws_session(self):
+        if self.config["sasl_aws_msk_iam_role_arn"]:
+            client = BotoSession().client('sts')
+            assume_role = client.assume_role(
+                RoleArn=self.config["sasl_aws_msk_iam_role_arn"],
+                RoleSessionName="kafka-python"
+            )
+            credentials = assume_role['Credentials']
+
+            return BotoSession(
+                aws_access_key_id=credentials['AccessKeyId'],
+                aws_secret_access_key=credentials['SecretAccessKey'],
+                aws_session_token=credentials['SessionToken'],
+            )
+
+        return BotoSession()
 
     def _build_oauth_client_request(self):
         token_provider = self.config['sasl_oauth_token_provider']
