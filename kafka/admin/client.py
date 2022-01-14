@@ -182,7 +182,7 @@ class KafkaAdminClient(object):
         'sasl_kerberos_service_name': 'kafka',
         'sasl_kerberos_domain_name': None,
         'sasl_oauth_token_provider': None,
-        'sasl_aws_msk_iam_session': None,
+        'sasl_aws_msk_iam_role_arn': None,
 
         # metrics configs
         'metric_reporters': [],
