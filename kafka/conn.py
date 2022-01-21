@@ -4,6 +4,7 @@ import copy
 import errno
 import io
 import logging
+import os
 from random import shuffle, uniform
 
 # selectors in stdlib as of py3.4
@@ -870,7 +871,16 @@ class BrokerConnection(object):
         log.info('%s: Authenticated via OAuth', self)
         return future.success(True)
 
+    @staticmethod
+    def _get_aws_region():
+        for aws_var in ["AWS_REGION", "AWS_DEFAULT_REGION"]:
+            region_name = os.environ.get(aws_var)
+            if region_name:
+                return region_name
+        return None
+
     def _get_aws_session(self):
+        region_name = self._get_aws_region()
         if self.config["sasl_aws_msk_iam_role_arn"]:
             client = BotoSession().client('sts')
             assume_role = client.assume_role(
@@ -883,9 +893,10 @@ class BrokerConnection(object):
                 aws_access_key_id=credentials['AccessKeyId'],
                 aws_secret_access_key=credentials['SecretAccessKey'],
                 aws_session_token=credentials['SessionToken'],
+                region_name=region_name,
             )
 
-        return BotoSession()
+        return BotoSession(region_name=region_name)
 
     def _build_oauth_client_request(self):
         token_provider = self.config['sasl_oauth_token_provider']
